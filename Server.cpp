@@ -43,7 +43,7 @@ void Server::handleNewConnection() {
             close(clientSocket);
             continue;
         }
-        cout << "Cliene connection added" << endl;
+        cout << "Client connection added" << endl;
     }
 }
 int Server::setupSocket() {
@@ -70,6 +70,7 @@ int Server::setupSocket() {
 }
 
 void Server::removeClient(int fd) {
+    delete connections[fd];
     connections.erase(fd);
     close(fd);
 }
@@ -90,7 +91,8 @@ void Server::start() {
             
             else {
                 cout << "FD: " << activeEvents[i].data.fd << " is ready to read" << endl;
-                connections[activeEvents[i].data.fd]->handleRead();
+                int fd = activeEvents[i].data.fd;
+                connections[fd]->handleRead();
             } 
         }
     }
