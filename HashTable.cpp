@@ -25,19 +25,29 @@ uint64_t HashTable::hash_fnv1a(const string& key) {
 
 InsertResult HashTable::insert(const string& key , string* value) {
     uint64_t hashKey = hash_fnv1a(key);
-    cout << "hashKey from insert: " << hashKey << endl;
+    
     uint64_t index = hashKey % buckets;
 
     for (int i = 0 ; i < 4 ; i++) {
+        if (table[index].key[i] == hashKey) {
+            currentMemoryUsage -= table[index].value[i]->length();
+            delete table[index].value[i];
+            if (currentMemoryUsage + value->length() > maxMemoryLimit) {
+                //cout << "Memory Heap limit exceeded!" << endl;
+                return InsertResult::ERR_OOM;
+            }
+            table[index].value[i] = value;
+            currentMemoryUsage += value->length();
+            return InsertResult::OK;
+        }
         if (table[index].key[i] == 0) {            
             if (currentMemoryUsage + value->length() > maxMemoryLimit) {
-                cout << "Memory Heap limit exceeded!" << endl;
+                //cout << "Memory Heap limit exceeded!" << endl;
                 return InsertResult::ERR_OOM;
             }
             table[index].key[i] = hashKey;
             table[index].value[i] = value;
             currentMemoryUsage += value->length();
-            cout << "Value inserted at index: " << index << endl;
             return InsertResult::OK; 
         }
     }
@@ -45,15 +55,25 @@ InsertResult HashTable::insert(const string& key , string* value) {
     uint64_t turnedIndex = (index + 1) % buckets;
     while(turnedIndex != index) {
         for (int i = 0 ; i < 4 ; i++) {
+            if (table[turnedIndex].key[i] == hashKey) {
+                currentMemoryUsage -= table[turnedIndex].value[i]->length();
+                delete table[turnedIndex].value[i];
+                if (currentMemoryUsage + value->length() > maxMemoryLimit) {
+                    //cout << "Memory Heap limit exceeded!" << endl;
+                    return InsertResult::ERR_OOM;
+                }
+                table[turnedIndex].value[i] = value;
+                currentMemoryUsage += value->length();
+                return InsertResult::OK;
+            }
             if(table[turnedIndex].key[i] == 0) {
                 if (currentMemoryUsage + value->length() > maxMemoryLimit) {
-                    cout << "Memory Heap limit exceeded!" << endl;
+                    //cout << "Memory Heap limit exceeded!" << endl;
                     return InsertResult::ERR_OOM;
                 }
                 table[turnedIndex].key[i] = hashKey;
                 table[turnedIndex].value[i] = value;
                 currentMemoryUsage += value->length();
-                cout << "Value inserted at index: " << turnedIndex << endl;
                 return InsertResult::OK;
             }
         }
@@ -65,7 +85,6 @@ InsertResult HashTable::insert(const string& key , string* value) {
 
 string* HashTable::search(const string& key) {
     uint64_t hashKey = hash_fnv1a(key);
-    cout << "hashKey from search: " << hashKey << endl;
     uint64_t index = hashKey % buckets;
 
     for (int i = 0 ; i < 4 ; i++) {
@@ -82,7 +101,6 @@ string* HashTable::search(const string& key) {
         turnedIndex = (turnedIndex + 1) % buckets;
     }
 
-    cout << "Not found!" << endl;
 
     return nullptr;
 }

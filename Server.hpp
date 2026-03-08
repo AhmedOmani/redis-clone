@@ -8,7 +8,7 @@ class Server {
 private:
     int port;
     int serverSocket;
-    HashTable db{64 * 1024};
+    HashTable db{1024 * 1024};
     EventLoop eventLoop;
     std::unordered_map<int, Connection*> connections;
     void handleNewConnection();

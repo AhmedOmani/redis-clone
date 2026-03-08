@@ -23,7 +23,6 @@ Server::Server(int port) {
 
 void Server::handleNewConnection() {
     while (true) {
-        cout << "handleNewConnection called" << endl;
         struct sockaddr_in clientAddress;
         socklen_t clientAddressLength = sizeof(clientAddress);
 
@@ -36,14 +35,15 @@ void Server::handleNewConnection() {
         makeNonBlocking(clientSocket);
         
         auto connection = new Connection(clientSocket , &db);
-        connection->onClose = [this](int fd) { removeClient(fd); };
+        connection->onClose = [this](int fd) { 
+            removeClient(fd); 
+        };
         connections[clientSocket] = connection;
 
         if (!eventLoop.addEvent(clientSocket , EPOLLIN | EPOLLET)) {
             close(clientSocket);
             continue;
         }
-        cout << "Client connection added" << endl;
     }
 }
 int Server::setupSocket() {
@@ -80,9 +80,7 @@ void Server::start() {
 
     std::vector<epoll_event> activeEvents;
     while (true) {
-        cout << "waiting for events" << endl;
         int numEvents = eventLoop.wait(activeEvents);
-        cout << "numEvents: " << numEvents << endl;
 
         for (int i = 0 ; i < numEvents ; i++) {
             if (activeEvents[i].data.fd == serverSocket) {
@@ -90,7 +88,6 @@ void Server::start() {
             }
             
             else {
-                cout << "FD: " << activeEvents[i].data.fd << " is ready to read" << endl;
                 int fd = activeEvents[i].data.fd;
                 connections[fd]->handleRead();
             } 
