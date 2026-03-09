@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>redis-clone — Live Demo</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg-root: #08080d;
+      --bg-card: #0f0f17;
+      --bg-input: #161622;
+      --bg-hover: #1c1c2e;
+      --border: #1e1e30;
+      --text: #e2e2e8;
+      --text-muted: #6b6b80;
+      --accent: #4a6cf7;
+      --accent-hover: #5b7bf8;
+      --green: #34d399;
+      --red: #f87171;
+      --mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    }
+
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-root);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    header h1 span {
+      color: var(--text-muted);
+      font-weight: 400;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 40px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    /* Key-Value Explorer */
+    .kv-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .kv-row:last-child { margin-bottom: 0; }
+
+    input[type="text"] {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    input[type="text"]::placeholder {
+      color: var(--text-muted);
+      font-family: 'Inter', sans-serif;
+    }
+
+    input[type="text"]:focus {
+      border-color: var(--accent);
+    }
+
+    button {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 18px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.3px;
+    }
+
+    button:hover {
+      background: var(--bg-hover);
+      border-color: var(--accent);
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    button.primary:hover {
+      background: var(--accent-hover);
+    }
+
+    .result-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      margin-top: 10px;
+      color: var(--text-muted);
+    }
+
+    .result-box.success { color: var(--green); }
+    .result-box.error { color: var(--red); }
+
+    /* Counter */
+    .counter-section {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .counter-value {
+      font-family: var(--mono);
+      font-size: 48px;
+      font-weight: 600;
+      letter-spacing: -2px;
+      min-width: 120px;
+    }
+
+    .counter-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Operations Log */
+    .log-container {
+      max-height: 260px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .log-entry {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+
+    .log-tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.3px;
+      min-width: 40px;
+      text-align: center;
+    }
+
+    .log-tag.set { background: rgba(74, 108, 247, 0.15); color: var(--accent); }
+    .log-tag.get { background: rgba(52, 211, 153, 0.15); color: var(--green); }
+    .log-tag.err { background: rgba(248, 113, 113, 0.15); color: var(--red); }
+
+    .log-cmd {
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--text-muted);
+      flex: 1;
+    }
+
+    .log-time {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-muted);
+      opacity: 0.5;
+    }
+
+    .log-empty {
+      padding: 24px 0;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    /* Stats bar */
+    .stats {
+      display: flex;
+      gap: 24px;
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .stat-item span {
+      color: var(--text);
+      font-weight: 500;
+      font-family: var(--mono);
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>redis-clone <span>/ live demo</span></h1>
+  <div class="status-badge">
+    <div class="status-dot"></div>
+    connected to :8080
+  </div>
+</header>
+
+<main>
+  <!-- Key-Value Explorer -->
+  <div class="card">
+    <div class="card-header">Key-Value Explorer</div>
+    <div class="card-body">
+      <div class="kv-row">
+        <input type="text" id="keyInput" placeholder="key">
+        <input type="text" id="valueInput" placeholder="value">
+      </div>
+      <div class="kv-row">
+        <button class="primary" onclick="doSet()">SET</button>
+        <button onclick="doGet()">GET</button>
+      </div>
+      <div class="result-box" id="resultBox">waiting for input</div>
+    </div>
+  </div>
+
+  <!-- Live Counter -->
+  <div class="card">
+    <div class="card-header">Live Counter</div>
+    <div class="card-body">
+      <div class="counter-section">
+        <div class="counter-value" id="counterValue">0</div>
+        <div class="counter-actions">
+          <button class="primary" onclick="incrementCounter()">Increment</button>
+          <button onclick="resetCounter()">Reset</button>
+        </div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat-item">total operations: <span id="totalOps">0</span></div>
+      <div class="stat-item">last latency: <span id="lastLatency">--</span></div>
+    </div>
+  </div>
+
+  <!-- Operations Log -->
+  <div class="card">
+    <div class="card-header">Recent Operations</div>
+    <div class="card-body" style="padding: 8px 20px;">
+      <div class="log-container" id="logContainer">
+        <div class="log-empty">no operations yet</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  let totalOps = 0;
+  let counterVal = 0;
+  const MAX_LOG = 50;
+
+  async function apiSet(key, value) {
+    const start = performance.now();
+    const res = await fetch("/api/set", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key, value }),
+    });
+    const elapsed = (performance.now() - start).toFixed(1);
+    const data = await res.json();
+    totalOps++;
+    document.getElementById("totalOps").textContent = totalOps;
+    document.getElementById("lastLatency").textContent = elapsed + "ms";
+    return { ...data, elapsed };
+  }
+
+  async function apiGet(key) {
+    const start = performance.now();
+    const res = await fetch(`/api/get?key=${encodeURIComponent(key)}`);
+    const elapsed = (performance.now() - start).toFixed(1);
+    const data = await res.json();
+    totalOps++;
+    document.getElementById("totalOps").textContent = totalOps;
+    document.getElementById("lastLatency").textContent = elapsed + "ms";
+    return { ...data, elapsed };
+  }
+
+  function addLog(type, cmd, elapsed) {
+    const container = document.getElementById("logContainer");
+    const empty = container.querySelector(".log-empty");
+    if (empty) empty.remove();
+
+    const entry = document.createElement("div");
+    entry.className = "log-entry";
+    entry.innerHTML = `
+      <span class="log-tag ${type}">${type.toUpperCase()}</span>
+      <span class="log-cmd">${escapeHtml(cmd)}</span>
+      <span class="log-time">${elapsed}ms</span>
+    `;
+
+    container.insertBefore(entry, container.firstChild);
+
+    while (container.children.length > MAX_LOG) {
+      container.removeChild(container.lastChild);
+    }
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function showResult(text, type) {
+    const box = document.getElementById("resultBox");
+    box.textContent = text;
+    box.className = "result-box " + type;
+  }
+
+  async function doSet() {
+    const key = document.getElementById("keyInput").value.trim();
+    const value = document.getElementById("valueInput").value.trim();
+    if (!key || !value) {
+      showResult("key and value are required", "error");
+      return;
+    }
+    const result = await apiSet(key, value);
+    if (result.ok) {
+      showResult("OK", "success");
+      addLog("set", `SET ${key} ${value}`, result.elapsed);
+    } else {
+      showResult(result.value, "error");
+      addLog("err", result.value, result.elapsed);
+    }
+  }
+
+  async function doGet() {
+    const key = document.getElementById("keyInput").value.trim();
+    if (!key) {
+      showResult("key is required", "error");
+      return;
+    }
+    const result = await apiGet(key);
+    if (result.ok && result.value !== null) {
+      showResult(result.value, "success");
+      addLog("get", `GET ${key} -> ${result.value}`, result.elapsed);
+    } else if (result.ok && result.value === null) {
+      showResult("(nil)", "");
+      addLog("get", `GET ${key} -> (nil)`, result.elapsed);
+    } else {
+      showResult(result.value, "error");
+      addLog("err", result.value, result.elapsed);
+    }
+  }
+
+  async function incrementCounter() {
+    counterVal++;
+    const result = await apiSet("counter", String(counterVal));
+    if (result.ok) {
+      document.getElementById("counterValue").textContent = counterVal;
+      addLog("set", `SET counter ${counterVal}`, result.elapsed);
+    }
+  }
+
+  async function resetCounter() {
+    counterVal = 0;
+    const result = await apiSet("counter", "0");
+    if (result.ok) {
+      document.getElementById("counterValue").textContent = "0";
+      addLog("set", "SET counter 0", result.elapsed);
+    }
+  }
+
+  // Load counter on page load
+  (async function init() {
+    try {
+      const result = await apiGet("counter");
+      if (result.ok && result.value !== null) {
+        counterVal = parseInt(result.value) || 0;
+        document.getElementById("counterValue").textContent = counterVal;
+      }
+    } catch (e) {
+      // server not running
+    }
+  })();
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT" && e.key === "Enter") {
+      if (e.shiftKey) doGet();
+      else if (document.getElementById("valueInput").value) doSet();
+      else doGet();
+    }
+  });
+</script>
+
+</body>
+</html>

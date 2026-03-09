@@ -1,1 +1,16 @@
 build/
+*.o
+*.a
+a
+redis-clone
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+node_modules/
+demo/node_modules/
