@@ -130,6 +130,24 @@ These numbers were measured on the same machine across the development process. 
 
 ---
 
+## Live Demo
+
+A small web interface is included to make the database interactive without needing a terminal. It connects to the C++ server through a lightweight Node.js proxy that translates HTTP requests into RESP protocol.
+
+```bash
+# Terminal 1: start the engine
+cd build && ./redis-clone
+
+# Terminal 2: start the demo
+cd demo && node server.js
+
+# Open http://localhost:3000
+```
+
+The demo includes a key-value explorer for manual SET/GET operations, a live counter backed by the database, and an operations log showing every command with its response time, and you can test it through different tabs to make sure that redis is pointing to the same data table.
+
+---
+
 ## Project Structure
 
 ```
