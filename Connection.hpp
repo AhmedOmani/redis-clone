@@ -1,6 +1,7 @@
 #pragma once
 #include "HashTable.hpp"
 #include <string>
+#include <string_view>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -14,7 +15,7 @@ private:
     int cursor{0};
     std::string readBuffer;
     std::string writeBuffer;
-    
+    std::vector<std::string_view> tokens;
     HashTable* db;
     void processBuffer();
     
@@ -24,6 +25,6 @@ public:
     std::function<void(int)> onClose;
     Connection(int fd , HashTable* db);
     void handleRead();
-    void handleCommand(std::vector<std::string> tokens);
-    std::vector<std::string> parse();
+    void handleCommand(const std::vector<std::string_view>& tokens);
+    std::vector<std::string_view> parse();
 };

@@ -33,7 +33,7 @@ void Connection::handleRead() {
 void Connection::processBuffer() {
     while(cursor < readBuffer.length()) {
         
-        vector<string> tokens = parse();
+        vector<string_view> tokens = parse();
         
         if (tokens.empty()) break;
 
@@ -56,14 +56,14 @@ void Connection::processBuffer() {
     }
 }
 
-void Connection::handleCommand(vector<string> tokens) {
+void Connection::handleCommand(const vector<string_view>& tokens) {
 
     if (tokens[0] == "SET") {
         if (tokens.size() < 3) {
             writeBuffer += "-ERR wrong number of arguments for 'set' command\r\n";
             return;
         }
-        string key = tokens[1];
+        string key = string(tokens[1]);
         string* value = new string(tokens[2]);
 
         InsertResult result = db->insert(key , value);
@@ -88,7 +88,7 @@ void Connection::handleCommand(vector<string> tokens) {
             writeBuffer += "-ERR wrong number of arguments for 'get' command\r\n";
             return;
         }
-        string key = tokens[1];
+        string key = string(tokens[1]);
         string* value = db->search(key);
         if (value == nullptr) {
             writeBuffer += "$-1\r\n";
@@ -100,110 +100,86 @@ void Connection::handleCommand(vector<string> tokens) {
     writeBuffer += "+OK\r\n";
 }
 
-vector<string> Connection::parse() {
+vector<string_view> Connection::parse() {
     int savedCursor = cursor;
     if (readBuffer[cursor] == '*') {
+        //clear the vector
+        tokens.clear();
+        
         cursor++;
         if (cursor >= readBuffer.length()) {
             cursor = savedCursor;
             return {};
         }
-        string sizeStr = "";
-        while (cursor < readBuffer.length() && readBuffer[cursor] != '\r') {
-            sizeStr += readBuffer[cursor];
+
+        int arraySize = 0;
+        while(cursor < readBuffer.length() && readBuffer[cursor] != '\r') {
+            arraySize = arraySize * 10 + (readBuffer[cursor] - '0');
             cursor++;
             if (cursor >= readBuffer.length()) {
                 cursor = savedCursor;
                 return {};
             }
         }
-        int arraySize = stoi(sizeStr);
-        vector<string> tokens;
-        cursor += 2; // skip \r\n after the size
+
+        cursor += 2; // skip \r\n after the array size
         if (cursor > readBuffer.length()) {
             cursor = savedCursor;
             return {};
         }
-        
-        // Trace this: 
-        //*3\r\n$3\r\ nSET\r\n$5\r\nmykey\r\n$3\r\n100\r\n
-        
-        int slashCounts = 0 ;
-        int tmpIdx = cursor;
-/*
-        //The idea from this loop is to verify that i have a complete command in the buffer 
-        //If i have a complete command i will process it
-        //either i will wait until the readBuffer has a complete command
-        while (tmpIdx < readBuffer.length() && slashCounts < arraySize * 2) {
-            if (readBuffer[tmpIdx] == '\r') {
-                slashCounts += 1;                
-            }
-            if (readBuffer[tmpIdx] == '\n') {
-                slashCounts += 1;                
-            }
-            tmpIdx++;
-        }
-        
-        if (slashCounts < arraySize * 2) {
-            cursor = savedCursor;
-            return {};
-        }
-*/
-        //Now i have a complete command in the readBuffer
-        //i will process it
 
-        while(cursor < readBuffer.length() && tokens.size() < arraySize) {
+        while (cursor < readBuffer.length() && tokens.size() < arraySize) {
             if (readBuffer[cursor] == '$') {
-                //Get the length of the string
                 cursor++;
                 if (cursor >= readBuffer.length()) {
-                    cursor = savedCursor;
+                    cursor = savedCursor ;
                     return {};
                 }
-                string lenStr = "";
-                while (cursor < readBuffer.length() && readBuffer[cursor] != '\r') {
-                    lenStr += readBuffer[cursor];
+
+                int len = 0;
+                while(cursor < readBuffer.length() && readBuffer[cursor] != '\r') {
+                    len = len * 10 + (readBuffer[cursor] - '0');
                     cursor += 1;
-                    if (cursor >= readBuffer.length()) {
-                        cursor = savedCursor;
-                        return {};
-                    }
                 }
 
-                cursor += 2; // skip \r\n after the length
-                if (cursor > readBuffer.length()) {
-                    cursor = savedCursor;
+                if (cursor >= readBuffer.length()) {
+                    cursor = savedCursor ;
                     return {};
                 }
 
-                int len = stoi(lenStr);
+                cursor += 2; // skip \r\n;
+                if (cursor > readBuffer.length()) {
+                    cursor = savedCursor ;
+                    return {};
+                }
+
                 if (len < 0) continue;
-                
-                //Extract the string
-                string token = "";
-                for (int i = 0 ; i < len ; i++) {
-                    token += readBuffer[cursor];
-                    cursor += 1;
-                    if (cursor >= readBuffer.length()) {
-                        cursor = savedCursor;
-                        return {};
-                    }
-                }
-                
-                cursor += 2; // skip \r\n after the string
-                if (cursor > readBuffer.length()) {
+
+                if (cursor + len > readBuffer.length()) {
                     cursor = savedCursor;
                     return {};
                 }
+
+                string_view token(readBuffer.data() + cursor , len);
+                cursor += len;
+
+                cursor += 2;
+                if (cursor > readBuffer.length()) {
+                    cursor = savedCursor ;
+                    return {};
+                }
+
                 tokens.push_back(token);
             }
-             
         }
         if (tokens.size() == arraySize) return tokens;
         cursor = savedCursor;
         return {};
     }
-    return {};
+    else {
+        cursor = savedCursor;
+        return {};
+    } 
 }
 
 

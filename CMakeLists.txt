@@ -20,4 +20,4 @@ add_executable(redis-clone
     HashTable.cpp
 )
 
-target_link_libraries(redis-clone PRIVATE pthread)
+target_link_libraries(redis-clone PRIVATE pthread jemalloc)
